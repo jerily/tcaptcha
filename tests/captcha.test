@@ -1,0 +1,107 @@
+#
+# Copyright Jerily LTD. All Rights Reserved.
+# SPDX-FileCopyrightText: 2026 Neofytos Dimitriou (neo@jerily.cy)
+# SPDX-License-Identifier: MIT.
+#
+
+package require tcltest 2
+package require tcaptcha 0.1.0
+namespace import ::tcltest::*
+namespace eval ::captchatest {}
+# Provide the setup test fixture.
+proc ::captchatest::setup {} {
+    set ::captchatest::mac [::tink::register_keyset [::tink::mac::create_keyset HMAC_SHA256]]
+    rename ::tcaptcha::image ::tcaptcha::original_image
+    # Provide the image test fixture.
+    proc ::tcaptcha::image {text} {
+        set ::captchatest::answer $text
+        original_image $text
+    }
+}
+# Provide the cleanup test fixture.
+proc ::captchatest::cleanup {} {
+    rename ::tcaptcha::image {}
+    rename ::tcaptcha::original_image ::tcaptcha::image
+    ::tink::unregister_keyset $::captchatest::mac
+}
+test captcha-1 {challenge is a valid PNG with an authenticated, answer-free state} -setup {
+    ::captchatest::setup
+} -body {
+    set challenge [::tcaptcha::create -mac $::captchatest::mac -context {tenant session}]
+    set png [dict get $challenge png]
+    set im [GD create_from_png_data #auto $png]
+    try {
+        list [binary encode hex [string range $png 0 7]] [$im width] [$im height] \
+            [lsort [dict keys [dict get $challenge state]]] \
+            [::tcaptcha::verify $::captchatest::mac {tenant session} [dict get $challenge state] $::captchatest::answer] \
+            [::tcaptcha::verify $::captchatest::mac {tenant session} [dict get $challenge state] " [string tolower $::captchatest::answer] "]
+    } finally {rename $im {}}
+} -cleanup {::captchatest::cleanup} -result {89504e470d0a1a0a 240 80 {expires id tag} 1 1}
+test captcha-2 {wrong answers, context/key substitution, tampering and expiry fail closed} -setup {
+    ::captchatest::setup
+} -body {
+    set challenge [::tcaptcha::create -mac $::captchatest::mac -context {tenant session}]
+    set state [dict get $challenge state]
+    set answer $::captchatest::answer
+    set other [::tink::register_keyset [::tink::mac::create_keyset HMAC_SHA256]]
+    try {
+        set result [list [::tcaptcha::verify $other {tenant session} $state $answer] \
+            [::tcaptcha::verify $::captchatest::mac {other session} $state $answer]]
+        foreach bad [list [dict replace $state id [string repeat 0 32]] \
+            [dict replace $state expires [expr {[dict get $state expires]+1}]] \
+            [dict replace $state expires [clock seconds]] \
+            [dict replace $state tag [string repeat 0 74]] \
+            [dict replace $state tag zzz] [dict remove $state tag] {odd}] {
+            lappend result [::tcaptcha::verify $::captchatest::mac {tenant session} $bad $answer]
+        }
+        foreach bad [list {} 000000 [string repeat X 65] {<script>} "${answer}X"] {
+            lappend result [::tcaptcha::verify $::captchatest::mac {tenant session} $state $bad]
+        }
+        set result
+    } finally {::tink::unregister_keyset $other}
+} -cleanup {::captchatest::cleanup} -result {0 0 0 0 0 0 0 0 0 0 0 0 0 0}
+test captcha-3 {identifiers are unique and all glyphs can be rendered without leaking GD commands} -setup {
+    ::captchatest::setup
+} -body {
+    set before [lsort [info commands ::gd*]]
+    set ids {}
+    for {set i 0} {$i < 12} {incr i} {
+        lappend ids [dict get [::tcaptcha::create -mac $::captchatest::mac -context session] state id]
+    }
+    foreach ch [split "01$::tcaptcha::alphabet" {}] {::tcaptcha::image [string repeat $ch 6]}
+    list [llength [lsort -unique $ids]] [expr {$before eq [lsort [info commands ::gd*]]}]
+} -cleanup {::captchatest::cleanup} -result {12 1}
+test captcha-4 {invalid creation and image options fail before creating resources} -body {
+    set result {}
+    foreach args {{-unknown x} {-mac} {} {-mac x} {-mac x -context session -ttl 0} {-mac x -context session -ttl 3601} {-mac x -context session -ttl x}} {
+        lappend result [catch {::tcaptcha::create {*}$args}]
+    }
+    foreach value {{A} {AAAAAA;exit} {IIIIII} {aaaaaa}} {lappend result [catch {::tcaptcha::image $value}]}
+    set result
+} -result {1 1 1 1 1 1 1 1 1 1 1}
+test captcha-5 {length and alphabet options survive real PNG generation and authenticated verification} -setup {
+    ::captchatest::setup
+} -body {
+    set result {}
+    foreach length {4 8 12} {
+        foreach letters {false true} {
+            set challenge [::tcaptcha::create -mac $::captchatest::mac -context session -length $length -letters $letters]
+            set answer $::captchatest::answer
+            set pattern [expr {$letters ? {^[2-9A-HJ-NP-Z]+$} : {^[0-9]+$}}]
+            set im [GD create_from_png_data #auto [dict get $challenge png]]
+            try {lappend result [list [string length $answer] [regexp $pattern $answer] [$im width] [$im height] \
+                [::tcaptcha::verify $::captchatest::mac session [dict get $challenge state] $answer] \
+                [::tcaptcha::verify $::captchatest::mac session [dict get $challenge state] [string range $answer 1 end]]]} finally {rename $im {}}
+        }
+    }
+    set result
+} -cleanup {::captchatest::cleanup} -result {{4 1 168 80 1 0} {4 1 168 80 1 0} {8 1 312 80 1 0} {8 1 312 80 1 0} {12 1 456 80 1 0} {12 1 456 80 1 0}}
+test captcha-6 {length and alphabet options reject invalid values before allocating resources} -body {
+    set result {}
+    foreach args {{-length 3} {-length 13} {-length 6.5} {-length many} {-letters maybe} {-letters {}}} {
+        lappend result [catch {::tcaptcha::create -mac unused -context session {*}$args}]
+    }
+    foreach text {AAA AAAAAAAAAAAAA} {lappend result [catch {::tcaptcha::image $text}]}
+    set result
+} -result {1 1 1 1 1 1 1 1}
+cleanupTests

@@ -1,0 +1,4 @@
+/build/
+/ttrek-venv/
+/ttrek-lock.json
+*.png
