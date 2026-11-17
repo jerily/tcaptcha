@@ -7,7 +7,7 @@
 package require Tcl 8.6 9
 package require tclgd 1.4.0
 package require tink 20240704.0.2
-package require twebserver 1.47.57
+package require thashlib 0.1.0
 namespace eval ::tcaptcha {
     variable alphabet 23456789ABCDEFGHJKLMNPQRSTUVWXYZ
     variable digits 0123456789
@@ -32,8 +32,8 @@ namespace eval ::tcaptcha {
         Y {17 17 10 4 4 4 4} Z {31 1 2 4 8 16 31}
     }
 }
-# Obtain cryptographic random bytes from the native server extension.
-proc ::tcaptcha::random_bytes {count} {::twebserver::random_bytes $count}
+# Obtain cryptographic random bytes from thashlib.
+proc ::tcaptcha::random_bytes {count} {::thashlib::random_bytes $count}
 # Rejection sampling avoids bias for arbitrary bounds.
 proc ::tcaptcha::random_int {bound} {
     if {![string is wideinteger -strict $bound] || $bound < 1 || $bound > 4294967296} {error "random bound must be 1..4294967296"}
@@ -127,4 +127,4 @@ proc ::tcaptcha::image {text} {
         return [$im png_data 6]
     } finally {rename $im {}}
 }
-package provide tcaptcha 0.1.0
+package provide tcaptcha 1.0.0

@@ -5,7 +5,7 @@
 #
 
 package require tcltest 2
-package require tcaptcha 0.1.0
+package require tcaptcha 1.0.0
 namespace import ::tcltest::*
 namespace eval ::captchatest {}
 # Provide the setup test fixture.

@@ -1,14 +1,14 @@
 # tcaptcha
 
 PNG CAPTCHA challenges for Tcl 8.6 and Tcl 9, using FlightAware's `tclgd`,
-`twebserver` for cryptographic randomness, and Tink for keyed verification.
+`thashlib` for cryptographic randomness, and Tink for keyed verification.
 Images use built-in glyphs, so no font files are required. Length and inclusion
 of letters are configurable; the default is six letters and digits.
 
 ## API
 
 ```tcl
-package require tcaptcha 0.1.0
+package require tcaptcha 1.0.0
 
 # Use a persistent host-owned HMAC_SHA256 keyset, registered in each worker.
 # Include the tenant, purpose and browser session in this context.
@@ -60,7 +60,7 @@ Install the native dependencies with ttrek using the updated registry:
 mkdir -p /tmp/tcaptcha-deps
 cd /tmp/tcaptcha-deps
 ttrek init -y
-ttrek install -y tclgd tink-tcl twebserver
+ttrek install -y tclgd tink-tcl thashlib
 ```
 
 From this checkout, with `/tmp/tcaptcha-deps/ttrek-venv/local/lib` on

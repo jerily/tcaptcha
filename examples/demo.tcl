@@ -5,7 +5,7 @@
 #
 
 lappend auto_path [file dirname [file dirname [file normalize [info script]]]]
-package require tcaptcha 0.1.0
+package require tcaptcha 1.0.0
 if {[llength $argv] > 3} {error "usage: tclsh demo.tcl ?output.png? ?length? ?letters?"}
 set filename [expr {[llength $argv] ? [lindex $argv 0] : "captcha.png"}]
 set length [expr {[llength $argv] > 1 ? [lindex $argv 1] : 6}]

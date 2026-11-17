@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(tcaptcha VERSION 0.1.0 LANGUAGES NONE)
+project(tcaptcha VERSION 1.0.0 LANGUAGES NONE)
 set(PACKAGE_DIR "lib/tcaptcha${PROJECT_VERSION}")
 install(FILES pkgIndex.tcl README.md LICENSE DESTINATION "${PACKAGE_DIR}")
 install(DIRECTORY library examples DESTINATION "${PACKAGE_DIR}")
