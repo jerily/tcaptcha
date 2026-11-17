@@ -1,6 +1,6 @@
 {
   "name": "tcaptcha",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "license": "MIT",
   "description": "Session-bound PNG CAPTCHA challenges for Tcl applications.",
   "url": "https://github.com/jerily/tcaptcha",
@@ -9,7 +9,7 @@
     "tcl": ">=8.6.14,<10.0.0",
     "tclgd": "^1.4.0",
     "tink-tcl": "20240704.0.2",
-    "twebserver": "^1.47.57"
+    "thashlib": "^0.1.0"
   },
   "devDependencies": {},
   "build": {
